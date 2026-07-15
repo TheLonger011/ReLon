@@ -32,10 +32,11 @@ func main() {
 	r := chi.NewRouter()
 
 	repo := repository.NewUserRepository(conn)
-	serv := service.NewAuthService(repo)
+	serv := service.NewAuthService(repo, cfg.JWT.Secret)
 	hand := handler.NewAuthHandler(serv)
 
 	r.Post("/register", hand.Register)
+	r.Post("/login", hand.Login)
 
 	addr := fmt.Sprintf(":%s", cfg.Server.Port)
 	err = http.ListenAndServe(addr, r)
