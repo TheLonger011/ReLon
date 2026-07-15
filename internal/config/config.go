@@ -7,10 +7,15 @@ import (
 	"os"
 )
 
+type JWTConfig struct {
+	Secret string
+}
+
 type Config struct {
 	DB     DBConfig
 	Redis  RedisConfig
 	Server ServerConfig
+	JWT    JWTConfig
 }
 
 type DBConfig struct {
@@ -49,8 +54,14 @@ func Load() (*Config, error) {
 		Server: ServerConfig{
 			Port: os.Getenv("SERVER_PORT"),
 		},
+		JWT: JWTConfig{
+			Secret: os.Getenv("JWT_SECRET"),
+		},
 	}
 
+	if cfg.JWT.Secret == "" {
+		return nil, fmt.Errorf("JWT secret not set")
+	}
 	if cfg.DB.Host == "" {
 		return nil, fmt.Errorf("DB_HOST env var not set")
 	}
