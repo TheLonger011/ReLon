@@ -26,6 +26,7 @@ type Claims struct {
 type AuthInterface interface {
 	CreateUser(ctx context.Context, user *models.User) error
 	GetByEmailOrUsername(ctx context.Context, identifier string) (*models.User, error)
+	GetByID(ctx context.Context, userID uuid.UUID) (*models.User, error)
 }
 
 func NewAuthService(repo AuthInterface, jwtSecret string) *AuthService {
@@ -83,4 +84,8 @@ func (s *AuthService) generateJWT(userID uuid.UUID) (string, error) {
 		return "", err
 	}
 	return tokenString, nil
+}
+
+func (s *AuthService) GetProfile(ctx context.Context, userID uuid.UUID) (*models.User, error) {
+	return s.repo.GetByID(ctx, userID)
 }
