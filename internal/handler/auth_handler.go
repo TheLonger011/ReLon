@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"github.com/TheLonger011/ReLon/internal/middleware"
 	"github.com/TheLonger011/ReLon/internal/models"
 	"github.com/TheLonger011/ReLon/internal/service"
 	"net/http"
@@ -82,6 +83,32 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		User:  user,
 		Token: token,
 	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+}
+
+func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	userId, err := middleware.GetUserID(ctx)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	user, err := h.service.GetProfile(ctx, userId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	err = json.NewEncoder(w).Encode(user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
