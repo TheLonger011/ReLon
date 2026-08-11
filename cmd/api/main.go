@@ -6,6 +6,7 @@ import (
 	"github.com/TheLonger011/ReLon/internal/config"
 	"github.com/TheLonger011/ReLon/internal/database"
 	"github.com/TheLonger011/ReLon/internal/handler"
+	"github.com/TheLonger011/ReLon/internal/middleware"
 	"github.com/TheLonger011/ReLon/internal/repository"
 	"github.com/TheLonger011/ReLon/internal/service"
 	"github.com/go-chi/chi/v5"
@@ -37,6 +38,7 @@ func main() {
 
 	r.Post("/register", hand.Register)
 	r.Post("/login", hand.Login)
+	r.With(middleware.Auth(cfg.JWT.Secret)).Get("/me", hand.Me)
 
 	addr := fmt.Sprintf(":%s", cfg.Server.Port)
 	err = http.ListenAndServe(addr, r)
