@@ -32,13 +32,27 @@ func main() {
 
 	r := chi.NewRouter()
 
-	repo := repository.NewUserRepository(conn)
-	serv := service.NewAuthService(repo, cfg.JWT.Secret)
-	hand := handler.NewAuthHandler(serv)
+	userRepo := repository.NewUserRepository(conn)
+	userServ := service.NewAuthService(userRepo, cfg.JWT.Secret)
+	userHand := handler.NewAuthHandler(userServ)
 
-	r.Post("/register", hand.Register)
-	r.Post("/login", hand.Login)
-	r.With(middleware.Auth(cfg.JWT.Secret)).Get("/me", hand.Me)
+	postRepo := repository.NewPostRepository(conn)
+	postSer := service.NewPostService(postRepo)
+	postHand := handler.NewPostHandler(postSer)
+
+	voteRepo := repository.NewVoteRepository(conn)
+	voteServ := service.NewVoteService(voteRepo)
+	voteHand := handler.NewVoteHandler(voteServ)
+
+	r.Post("/register", userHand.Register)
+	r.Post("/login", userHand.Login)
+	r.With(middleware.Auth(cfg.JWT.Secret)).Get("/me", userHand.Me)
+
+	r.With(middleware.Auth(cfg.JWT.Secret)).Post("/posts", postHand.CreatePost)
+	r.Get("/posts/{id}", postHand.GetByPostID)
+	r.Get("/posts", postHand.GetPosts)
+
+	r.With(middleware.Auth(cfg.JWT.Secret)).Post("/posts/{id}/vote", voteHand.Vote)
 
 	addr := fmt.Sprintf(":%s", cfg.Server.Port)
 	err = http.ListenAndServe(addr, r)
