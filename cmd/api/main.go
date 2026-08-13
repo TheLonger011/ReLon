@@ -44,6 +44,10 @@ func main() {
 	voteServ := service.NewVoteService(voteRepo)
 	voteHand := handler.NewVoteHandler(voteServ)
 
+	commentRepo := repository.NewCommentRepository(conn)
+	commentServ := service.NewCommentService(commentRepo)
+	commentHand := handler.NewCommentHandler(commentServ)
+
 	r.Post("/register", userHand.Register)
 	r.Post("/login", userHand.Login)
 	r.With(middleware.Auth(cfg.JWT.Secret)).Get("/me", userHand.Me)
@@ -53,6 +57,9 @@ func main() {
 	r.Get("/posts", postHand.GetPosts)
 
 	r.With(middleware.Auth(cfg.JWT.Secret)).Post("/posts/{id}/vote", voteHand.Vote)
+
+	r.With(middleware.Auth(cfg.JWT.Secret)).Post("/posts/{id}/comments", commentHand.CreateComment)
+	r.Get("/posts/{id}/comments", commentHand.GetByPostID)
 
 	addr := fmt.Sprintf(":%s", cfg.Server.Port)
 	err = http.ListenAndServe(addr, r)
