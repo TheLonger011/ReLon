@@ -51,6 +51,9 @@ func main() {
 	r.Post("/register", userHand.Register)
 	r.Post("/login", userHand.Login)
 	r.With(middleware.Auth(cfg.JWT.Secret)).Get("/me", userHand.Me)
+	r.Get("/posts/search", postHand.SearchPosts)
+	r.With(middleware.Auth(cfg.JWT.Secret)).Delete("/posts/{id}", postHand.DeletePost)
+	r.With(middleware.Auth(cfg.JWT.Secret)).Put("/posts/{id}", postHand.UpdatePost)
 
 	r.With(middleware.Auth(cfg.JWT.Secret)).Post("/posts", postHand.CreatePost)
 	r.Get("/posts/{id}", postHand.GetByPostID)

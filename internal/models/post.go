@@ -13,4 +13,5 @@ type Post struct {
 	CreatedAt     time.Time `json:"created_at"`
 	LikesCount    int       `json:"likes_count"`
 	DislikesCount int       `json:"dislikes_count"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
