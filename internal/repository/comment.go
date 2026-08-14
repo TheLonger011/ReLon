@@ -26,7 +26,7 @@ func (r CommentRepository) CreateComment(ctx context.Context, comment *models.Co
 }
 
 func (r CommentRepository) GetCommentByPostID(ctx context.Context, postID uuid.UUID, limit, offset int) ([]models.Comment, error) {
-	var comments []models.Comment
+	comments := []models.Comment{}
 
 	rows, err := r.pool.Query(ctx, `
 		SELECT id,post_id,author_id,content,created_at,updated_at FROM comments WHERE post_id = $1 

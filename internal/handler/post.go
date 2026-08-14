@@ -60,6 +60,7 @@ func (h *PostHandler) GetByPostID(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	idParam := chi.URLParam(r, "id")
 	postID, err := uuid.Parse(idParam)
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -70,6 +71,7 @@ func (h *PostHandler) GetByPostID(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	err = json.NewEncoder(w).Encode(post)
@@ -100,4 +102,90 @@ func (h *PostHandler) GetPosts(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func (h *PostHandler) SearchPosts(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	limit := r.URL.Query().Get("limit")
+	offset := r.URL.Query().Get("offset")
+	limitInt, _ := strconv.Atoi(limit)
+	offsetInt, _ := strconv.Atoi(offset)
+
+	query := r.URL.Query().Get("query")
+	if query == "" {
+		http.Error(w, "search query cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	search, err := h.service.SearchPosts(ctx, query, limitInt, offsetInt)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	err = json.NewEncoder(w).Encode(search)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *PostHandler) DeletePost(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	idParam := chi.URLParam(r, "id")
+	postID, err := uuid.Parse(idParam)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	authorID, err := middleware.GetUserID(ctx)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	err = h.service.DeletePost(ctx, postID, authorID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	idParam := chi.URLParam(r, "id")
+	postID, err := uuid.Parse(idParam)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	authorID, err := middleware.GetUserID(ctx)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	var req createPostRequest
+
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = h.service.UpdatePost(ctx, postID, authorID, req.Title, req.Content)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
