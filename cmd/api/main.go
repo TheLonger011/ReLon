@@ -30,6 +30,8 @@ func main() {
 
 	defer conn.Close()
 
+	IPLimiter := middleware.NewIPLimiter()
+
 	r := chi.NewRouter()
 
 	userRepo := repository.NewUserRepository(conn)
@@ -48,21 +50,23 @@ func main() {
 	commentServ := service.NewCommentService(commentRepo)
 	commentHand := handler.NewCommentHandler(commentServ)
 
-	r.Post("/register", userHand.Register)
-	r.Post("/login", userHand.Login)
+	r.With(middleware.RateLimit(IPLimiter)).Post("/register", userHand.Register)
+	r.With(middleware.RateLimit(IPLimiter)).Post("/login", userHand.Login)
 	r.With(middleware.Auth(cfg.JWT.Secret)).Get("/me", userHand.Me)
 	r.Get("/posts/search", postHand.SearchPosts)
 	r.With(middleware.Auth(cfg.JWT.Secret)).Delete("/posts/{id}", postHand.DeletePost)
 	r.With(middleware.Auth(cfg.JWT.Secret)).Put("/posts/{id}", postHand.UpdatePost)
 
-	r.With(middleware.Auth(cfg.JWT.Secret)).Post("/posts", postHand.CreatePost)
+	r.With(middleware.RateLimit(IPLimiter), middleware.Auth(cfg.JWT.Secret)).Post("/posts", postHand.CreatePost)
 	r.Get("/posts/{id}", postHand.GetByPostID)
 	r.Get("/posts", postHand.GetPosts)
 
 	r.With(middleware.Auth(cfg.JWT.Secret)).Post("/posts/{id}/vote", voteHand.Vote)
 
-	r.With(middleware.Auth(cfg.JWT.Secret)).Post("/posts/{id}/comments", commentHand.CreateComment)
+	r.With(middleware.RateLimit(IPLimiter), middleware.Auth(cfg.JWT.Secret)).Post("/posts/{id}/comments", commentHand.CreateComment)
 	r.Get("/posts/{id}/comments", commentHand.GetByPostID)
+	r.With(middleware.Auth(cfg.JWT.Secret)).Delete("/comments/{id}", commentHand.DeleteComment)
+	r.With(middleware.Auth(cfg.JWT.Secret)).Put("/comments/{id}", commentHand.UpdateComment)
 
 	addr := fmt.Sprintf(":%s", cfg.Server.Port)
 	err = http.ListenAndServe(addr, r)

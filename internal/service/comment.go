@@ -9,6 +9,8 @@ import (
 type CommentInterface interface {
 	CreateComment(ctx context.Context, comment *models.Comment) error
 	GetCommentByPostID(ctx context.Context, postID uuid.UUID, limit, offset int) ([]models.Comment, error)
+	DeleteComment(ctx context.Context, commentID, authorID uuid.UUID) error
+	UpdateComment(ctx context.Context, commentID, authorID uuid.UUID, content string) error
 }
 
 type CommentService struct {
@@ -43,4 +45,12 @@ func (s *CommentService) GetCommentsByPostID(ctx context.Context, postID uuid.UU
 		offset = 0
 	}
 	return s.repo.GetCommentByPostID(ctx, postID, limit, offset)
+}
+
+func (s *CommentService) DeleteComment(ctx context.Context, commentID, authorID uuid.UUID) error {
+	return s.repo.DeleteComment(ctx, commentID, authorID)
+}
+
+func (s *CommentService) UpdateComment(ctx context.Context, commentID, authorID uuid.UUID, content string) error {
+	return s.repo.UpdateComment(ctx, commentID, authorID, content)
 }

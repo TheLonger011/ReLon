@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"github.com/TheLonger011/ReLon/internal/models"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -50,5 +51,34 @@ func (r CommentRepository) GetCommentByPostID(ctx context.Context, postID uuid.U
 		return comments, err
 	}
 	return comments, nil
+
+}
+
+func (r CommentRepository) DeleteComment(ctx context.Context, commentID, authorID uuid.UUID) error {
+	tag, err := r.pool.Exec(ctx, `
+		DELETE FROM comments WHERE id = $1 AND author_id = $2`,
+		commentID, authorID,
+	)
+	if err != nil {
+		return fmt.Errorf("delete comment: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("delete comment: no rows affected")
+	}
+	return nil
+}
+
+func (r CommentRepository) UpdateComment(ctx context.Context, commentID, authorID uuid.UUID, content string) error {
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE comments SET content = $1, updated_at = NOW() WHERE id = $2 AND author_id = $3`,
+		content, commentID, authorID,
+	)
+	if err != nil {
+		return fmt.Errorf("update comment: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("update comment: no rows affected")
+	}
+	return nil
 
 }

@@ -41,6 +41,7 @@ func (r VoteRepository) Vote(ctx context.Context, userID, postID uuid.UUID, vote
 	if err != nil {
 		return err
 	}
+
 	defer tx.Rollback(ctx)
 
 	err = tx.QueryRow(ctx, `
