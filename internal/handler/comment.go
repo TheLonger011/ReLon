@@ -93,3 +93,56 @@ func (h *CommentHandler) GetByPostID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func (h *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	authorID, err := middleware.GetUserID(ctx)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	commentID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = h.service.DeleteComment(ctx, commentID, authorID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+
+}
+
+func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	authorID, err := middleware.GetUserID(ctx)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	var req commentRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	commentID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = h.service.UpdateComment(ctx, commentID, authorID, req.Content)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+
+}
