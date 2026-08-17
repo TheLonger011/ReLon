@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/TheLonger011/ReLon/internal/models"
 	"github.com/google/uuid"
@@ -17,26 +18,34 @@ type PostInterface interface {
 }
 
 type PostService struct {
-	repo PostInterface
+	repo       PostInterface
+	memberRepo CommunityMemberInterface
 }
 
-func NewPostService(repo PostInterface) *PostService {
-	return &PostService{repo: repo}
+func NewPostService(repo PostInterface, memberRepo CommunityMemberInterface) *PostService {
+	return &PostService{repo: repo, memberRepo: memberRepo}
 }
 
-func (s *PostService) CreatePost(
-	ctx context.Context,
-	authorID uuid.UUID,
-	title, content string) (*models.Post, error) {
+func (s *PostService) CreatePost(ctx context.Context, authorID uuid.UUID, title, content string, communityID *uuid.UUID) (*models.Post, error) {
+	if communityID != nil {
+		isMember, err := s.memberRepo.IsMember(ctx, *communityID, authorID)
+		if err != nil {
+			return nil, err
+		}
+		if !isMember {
+			return nil, errors.New("community is not a member")
+		}
+	}
 
 	post := models.Post{
-		AuthorID: authorID,
-		Title:    title,
-		Content:  content,
+		AuthorID:    authorID,
+		Title:       title,
+		Content:     content,
+		CommunityID: communityID,
 	}
-	err := s.repo.CreatePost(ctx, &post)
-	if err != nil {
-		return nil, fmt.Errorf("create post: %w", err)
+
+	if err := s.repo.CreatePost(ctx, &post); err != nil {
+		return nil, errors.New("not a member of this community")
 	}
 
 	return &post, nil

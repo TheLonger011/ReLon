@@ -39,8 +39,6 @@ func main() {
 	userHand := handler.NewAuthHandler(userServ)
 
 	postRepo := repository.NewPostRepository(conn)
-	postSer := service.NewPostService(postRepo)
-	postHand := handler.NewPostHandler(postSer)
 
 	voteRepo := repository.NewVoteRepository(conn)
 	voteServ := service.NewVoteService(voteRepo)
@@ -49,6 +47,21 @@ func main() {
 	commentRepo := repository.NewCommentRepository(conn)
 	commentServ := service.NewCommentService(commentRepo)
 	commentHand := handler.NewCommentHandler(commentServ)
+
+	communityRepo := repository.NewCommunityRepository(conn)
+	communityServ := service.NewCommunityService(communityRepo)
+	communityHand := handler.NewCommunityHandler(communityServ)
+
+	communityMemberRepo := repository.NewCommunityMemberRepository(conn)
+	communityMemberServ := service.NewCommunityMemberService(communityMemberRepo, communityRepo)
+	communityMemberHand := handler.NewCommunityMemberHandler(communityMemberServ)
+
+	postSer := service.NewPostService(postRepo, communityMemberRepo)
+	postHand := handler.NewPostHandler(postSer)
+
+	communityRequestRepo := repository.NewCommunityRequestRepository(conn)
+	communityJoinRequestServ := service.NewCommunityJoinRequestService(communityRequestRepo, communityMemberRepo, communityRepo)
+	communityJoinRequestHand := handler.NewCommunityJoinRequestHandler(communityJoinRequestServ)
 
 	r.With(middleware.RateLimit(IPLimiter)).Post("/register", userHand.Register)
 	r.With(middleware.RateLimit(IPLimiter)).Post("/login", userHand.Login)
@@ -62,16 +75,27 @@ func main() {
 	r.Get("/posts", postHand.GetPosts)
 
 	r.With(middleware.Auth(cfg.JWT.Secret)).Post("/posts/{id}/vote", voteHand.Vote)
+	r.With(middleware.Auth(cfg.JWT.Secret)).Delete("/posts/{id}/vote", voteHand.RemoveVote)
 
 	r.With(middleware.RateLimit(IPLimiter), middleware.Auth(cfg.JWT.Secret)).Post("/posts/{id}/comments", commentHand.CreateComment)
 	r.Get("/posts/{id}/comments", commentHand.GetByPostID)
 	r.With(middleware.Auth(cfg.JWT.Secret)).Delete("/comments/{id}", commentHand.DeleteComment)
 	r.With(middleware.Auth(cfg.JWT.Secret)).Put("/comments/{id}", commentHand.UpdateComment)
 
+	r.With(middleware.Auth(cfg.JWT.Secret)).Post("/communities", communityHand.CreateCommunity)
+	r.Get("/communities/{id}", communityHand.GetCommunityByID)
+	r.Get("/communities", communityHand.GetCommunities)
+	r.With(middleware.Auth(cfg.JWT.Secret)).Delete("/communities/{id}", communityHand.DeleteCommunity)
+	r.With(middleware.Auth(cfg.JWT.Secret)).Put("/communities/{id}", communityHand.UpdateCommunity)
+	r.With(middleware.Auth(cfg.JWT.Secret)).Delete("/communities/{id}/leave", communityMemberHand.LeaveCommunity)
+	r.With(middleware.Auth(cfg.JWT.Secret)).Post("/communities/{id}/join", communityJoinRequestHand.JoinCommunity)
+	r.With(middleware.Auth(cfg.JWT.Secret)).Get("/communities/{id}/requests", communityJoinRequestHand.GetPendingRequests)
+	r.With(middleware.Auth(cfg.JWT.Secret)).Post("/communities/{id}/requests/{requestId}/approve", communityJoinRequestHand.ApproveJoinRequest)
+	r.With(middleware.Auth(cfg.JWT.Secret)).Post("/communities/{id}/requests/{requestId}/reject", communityJoinRequestHand.RejectJoinRequest)
+
 	addr := fmt.Sprintf(":%s", cfg.Server.Port)
 	err = http.ListenAndServe(addr, r)
 	if err != nil {
 		log.Fatal("Error starting server: ", err)
 	}
-
 }

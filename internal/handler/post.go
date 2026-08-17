@@ -15,8 +15,9 @@ type PostHandler struct {
 }
 
 type createPostRequest struct {
-	Title   string `json:"title"`
-	Content string `json:"content"`
+	Title       string     `json:"title"`
+	Content     string     `json:"content"`
+	CommunityID *uuid.UUID `json:"community_id,omitempty"`
 }
 
 func NewPostHandler(service *service.PostService) *PostHandler {
@@ -33,27 +34,24 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	var req createPostRequest
 
-	err = json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	post, err := h.service.CreatePost(ctx, authorID, req.Title, req.Content)
+	post, err := h.service.CreatePost(ctx, authorID, req.Title, req.Content, req.CommunityID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
-	err = json.NewEncoder(w).Encode(post)
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(post); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 }
 
 func (h *PostHandler) GetByPostID(w http.ResponseWriter, r *http.Request) {
@@ -74,8 +72,7 @@ func (h *PostHandler) GetByPostID(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(post)
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(post); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -97,8 +94,7 @@ func (h *PostHandler) GetPosts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	err = json.NewEncoder(w).Encode(post)
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(post); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -127,8 +123,7 @@ func (h *PostHandler) SearchPosts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	err = json.NewEncoder(w).Encode(search)
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(search); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -149,8 +144,7 @@ func (h *PostHandler) DeletePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.service.DeletePost(ctx, postID, authorID)
-	if err != nil {
+	if err := h.service.DeletePost(ctx, postID, authorID); err != nil {
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}
@@ -175,17 +169,14 @@ func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 
 	var req createPostRequest
 
-	err = json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err = h.service.UpdatePost(ctx, postID, authorID, req.Title, req.Content)
-	if err != nil {
+	if err := h.service.UpdatePost(ctx, postID, authorID, req.Title, req.Content); err != nil {
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}
-
 	w.WriteHeader(http.StatusOK)
 }

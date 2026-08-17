@@ -76,7 +76,6 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
-
 }
 
 func (c DBConfig) String() string {

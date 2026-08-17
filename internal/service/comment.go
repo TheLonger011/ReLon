@@ -27,10 +27,11 @@ func (s *CommentService) CreateComment(ctx context.Context, authorID, postID uui
 		PostID:   postID,
 		Content:  content,
 	}
-	err := s.repo.CreateComment(ctx, comment)
-	if err != nil {
+
+	if err := s.repo.CreateComment(ctx, comment); err != nil {
 		return nil, err
 	}
+
 	return comment, nil
 }
 
