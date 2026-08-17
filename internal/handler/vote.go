@@ -39,14 +39,12 @@ func (h *VoteHandler) Vote(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req voteRequest
-	err = json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err = h.service.Vote(ctx, userID, postID, req.VoteType)
-	if err != nil {
+	if err := h.service.Vote(ctx, userID, postID, req.VoteType); err != nil {
 		if errors.Is(err, service.ErrInvalidVoteType) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -54,6 +52,28 @@ func (h *VoteHandler) Vote(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *VoteHandler) RemoveVote(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	idParam := chi.URLParam(r, "id")
+	postID, err := uuid.Parse(idParam)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	userID, err := middleware.GetUserID(ctx)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	if err := h.service.RemoveVote(ctx, userID, postID); err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

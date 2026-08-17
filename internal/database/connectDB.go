@@ -21,5 +21,4 @@ func ConnectDB(ctx context.Context, db *config.DBConfig) (*pgxpool.Pool, error) 
 	}
 
 	return pool, nil
-
 }

@@ -40,8 +40,7 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 
 	var req commentRequest
 
-	err = json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -55,9 +54,7 @@ func (h *CommentHandler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
-	err = json.NewEncoder(w).Encode(comment)
-
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(comment); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -87,8 +84,7 @@ func (h *CommentHandler) GetByPostID(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	err = json.NewEncoder(w).Encode(comment)
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(comment); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -108,13 +104,11 @@ func (h *CommentHandler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.service.DeleteComment(ctx, commentID, authorID)
-	if err != nil {
+	if err := h.service.DeleteComment(ctx, commentID, authorID); err != nil {
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-
 }
 
 func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
@@ -126,8 +120,7 @@ func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req commentRequest
-	err = json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -138,11 +131,9 @@ func (h *CommentHandler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.service.UpdateComment(ctx, commentID, authorID, req.Content)
-	if err != nil {
+	if err := h.service.UpdateComment(ctx, commentID, authorID, req.Content); err != nil {
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-
 }

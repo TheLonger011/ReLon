@@ -8,6 +8,7 @@ import (
 
 type VoteInterface interface {
 	Vote(ctx context.Context, userID, postID uuid.UUID, voteType int) error
+	RemoveVote(ctx context.Context, userID, postID uuid.UUID) error
 }
 
 type VoteService struct {
@@ -25,4 +26,8 @@ func (s *VoteService) Vote(ctx context.Context, userID, postID uuid.UUID, voteTy
 		return ErrInvalidVoteType
 	}
 	return s.repo.Vote(ctx, userID, postID, voteType)
+}
+
+func (s *VoteService) RemoveVote(ctx context.Context, userID, postID uuid.UUID) error {
+	return s.repo.RemoveVote(ctx, userID, postID)
 }

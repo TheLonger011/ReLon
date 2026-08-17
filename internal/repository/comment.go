@@ -18,8 +18,12 @@ func NewCommentRepository(pool *pgxpool.Pool) *CommentRepository {
 
 func (r CommentRepository) CreateComment(ctx context.Context, comment *models.Comment) error {
 	err := r.pool.QueryRow(ctx, `
-	INSERT INTO comments(author_id, post_id, content) VALUES ($1, $2, $3)
-	RETURNING id,created_at,updated_at`, comment.AuthorID, comment.PostID, comment.Content).Scan(&comment.ID, &comment.CreatedAt, &comment.UpdatedAt)
+		INSERT INTO comments(author_id, post_id, content) 
+		VALUES ($1, $2, $3)
+		RETURNING id,created_at,updated_at`,
+		comment.AuthorID, comment.PostID, comment.Content,
+	).Scan(&comment.ID, &comment.CreatedAt, &comment.UpdatedAt)
+
 	if err != nil {
 		return err
 	}
@@ -30,7 +34,8 @@ func (r CommentRepository) GetCommentByPostID(ctx context.Context, postID uuid.U
 	comments := []models.Comment{}
 
 	rows, err := r.pool.Query(ctx, `
-		SELECT id,post_id,author_id,content,created_at,updated_at FROM comments WHERE post_id = $1 
+		SELECT id,post_id,author_id,content,created_at,updated_at 
+		FROM comments WHERE post_id = $1 
 		ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
 		postID, limit, offset,
 	)
@@ -42,16 +47,24 @@ func (r CommentRepository) GetCommentByPostID(ctx context.Context, postID uuid.U
 
 	for rows.Next() {
 		var comment models.Comment
-		if err := rows.Scan(&comment.ID, &comment.PostID, &comment.AuthorID, &comment.Content, &comment.CreatedAt, &comment.UpdatedAt); err != nil {
+		err := rows.Scan(
+			&comment.ID,
+			&comment.PostID,
+			&comment.AuthorID,
+			&comment.Content,
+			&comment.CreatedAt,
+			&comment.UpdatedAt,
+		)
+		if err != nil {
 			return comments, err
 		}
+
 		comments = append(comments, comment)
 	}
 	if err := rows.Err(); err != nil {
 		return comments, err
 	}
 	return comments, nil
-
 }
 
 func (r CommentRepository) DeleteComment(ctx context.Context, commentID, authorID uuid.UUID) error {
@@ -80,5 +93,4 @@ func (r CommentRepository) UpdateComment(ctx context.Context, commentID, authorI
 		return fmt.Errorf("update comment: no rows affected")
 	}
 	return nil
-
 }

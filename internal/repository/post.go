@@ -17,12 +17,17 @@ func NewPostRepository(pool *pgxpool.Pool) *PostRepository {
 }
 
 func (r PostRepository) CreatePost(ctx context.Context, post *models.Post) error {
-
 	err := r.pool.QueryRow(ctx, `
-		INSERT INTO posts(author_id, title, content) VALUES ($1, $2, $3) 
+		INSERT INTO posts(author_id, title, content,community_id) VALUES ($1, $2, $3, $4) 
 		RETURNING id, created_at, updated_at, likes_count, dislikes_count`,
-		post.AuthorID, post.Title, post.Content,
-	).Scan(&post.ID, &post.CreatedAt, &post.UpdatedAt, &post.LikesCount, &post.DislikesCount)
+		post.AuthorID, post.Title, post.Content, post.CommunityID,
+	).Scan(
+		&post.ID,
+		&post.CreatedAt,
+		&post.UpdatedAt,
+		&post.LikesCount,
+		&post.DislikesCount,
+	)
 
 	if err != nil {
 		return fmt.Errorf("create post: %w", err)
@@ -35,25 +40,33 @@ func (r PostRepository) GetPostByID(ctx context.Context, postID uuid.UUID) (*mod
 	post := &models.Post{}
 
 	err := r.pool.QueryRow(ctx, `
-		SELECT id,author_id, title, content,created_at, likes_count, dislikes_count,updated_at
-		FROM posts WHERE id = $1`, postID,
-	).Scan(&post.ID, &post.AuthorID, &post.Title, &post.Content, &post.CreatedAt, &post.LikesCount, &post.DislikesCount, &post.UpdatedAt)
-
+		SELECT id,author_id, title, content,created_at, likes_count, dislikes_count,updated_at,community_id
+		FROM posts WHERE id = $1`,
+		postID,
+	).Scan(
+		&post.ID,
+		&post.AuthorID,
+		&post.Title,
+		&post.Content,
+		&post.CreatedAt,
+		&post.LikesCount,
+		&post.DislikesCount,
+		&post.UpdatedAt,
+		&post.CommunityID,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("get post by id: %w", err)
 	}
-
 	return post, nil
-
 }
 
 func (r PostRepository) GetPosts(ctx context.Context, limit, offset int) ([]models.Post, error) {
-
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, author_id, title, content, created_at, likes_count, dislikes_count,updated_at
+		SELECT id, author_id, title, content, created_at, likes_count, dislikes_count,updated_at,community_id
 		FROM posts ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2`,
-		limit, offset)
+		limit, offset,
+	)
 
 	if err != nil {
 		return nil, fmt.Errorf("get posts: %w", err)
@@ -64,25 +77,32 @@ func (r PostRepository) GetPosts(ctx context.Context, limit, offset int) ([]mode
 	posts := []models.Post{}
 	for rows.Next() {
 		var post models.Post
-		err := rows.Scan(&post.ID, &post.AuthorID, &post.Title, &post.Content, &post.CreatedAt, &post.LikesCount, &post.DislikesCount, &post.UpdatedAt)
 
+		err := rows.Scan(
+			&post.ID,
+			&post.AuthorID,
+			&post.Title,
+			&post.Content,
+			&post.CreatedAt,
+			&post.LikesCount,
+			&post.DislikesCount,
+			&post.UpdatedAt,
+			&post.CommunityID,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("get posts: %w", err)
 		}
-
 		posts = append(posts, post)
 	}
-
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("get posts: %w", err)
 	}
-
 	return posts, nil
 }
 
 func (r PostRepository) SearchPosts(ctx context.Context, query string, limit, offset int) ([]models.Post, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id,author_id, title, content, created_at, likes_count, dislikes_count,updated_at
+		SELECT id,author_id, title, content, created_at, likes_count, dislikes_count,updated_at,community_id
 		FROM posts WHERE title ILIKE '%' || $1 || '%'
 		ORDER BY created_at DESC
 		LIMIT $2 OFFSET $3`,
@@ -99,7 +119,17 @@ func (r PostRepository) SearchPosts(ctx context.Context, query string, limit, of
 
 	for rows.Next() {
 		var post models.Post
-		err := rows.Scan(&post.ID, &post.AuthorID, &post.Title, &post.Content, &post.CreatedAt, &post.LikesCount, &post.DislikesCount, &post.UpdatedAt)
+		err := rows.Scan(
+			&post.ID,
+			&post.AuthorID,
+			&post.Title,
+			&post.Content,
+			&post.CreatedAt,
+			&post.LikesCount,
+			&post.DislikesCount,
+			&post.UpdatedAt,
+			&post.CommunityID,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("search posts: %w", err)
 		}
@@ -110,7 +140,6 @@ func (r PostRepository) SearchPosts(ctx context.Context, query string, limit, of
 		return nil, fmt.Errorf("search posts: %w", err)
 	}
 	return posts, nil
-
 }
 
 func (r PostRepository) DeletePost(ctx context.Context, postID, authorID uuid.UUID) error {

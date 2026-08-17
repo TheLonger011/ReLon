@@ -15,7 +15,7 @@ var ErrInvalidCredentials = errors.New("invalid credentials")
 
 type AuthService struct {
 	repo      AuthInterface
-	jwtsecret string
+	jwtSecret string
 }
 
 type Claims struct {
@@ -30,7 +30,7 @@ type AuthInterface interface {
 }
 
 func NewAuthService(repo AuthInterface, jwtSecret string) *AuthService {
-	return &AuthService{repo: repo, jwtsecret: jwtSecret}
+	return &AuthService{repo: repo, jwtSecret: jwtSecret}
 }
 
 func (s *AuthService) Register(ctx context.Context, username, email, password string) (*models.User, error) {
@@ -45,10 +45,10 @@ func (s *AuthService) Register(ctx context.Context, username, email, password st
 		PasswordHash: string(hash),
 	}
 
-	err = s.repo.CreateUser(ctx, &user)
-	if err != nil {
-		return nil, err
+	if err := s.repo.CreateUser(ctx, &user); err != nil {
+		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
+
 	return &user, nil
 }
 
@@ -57,8 +57,7 @@ func (s *AuthService) Login(ctx context.Context, identifier, password string) (*
 	if err != nil {
 		return nil, "", ErrInvalidCredentials
 	}
-	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
-	if err != nil {
+	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)) != nil {
 		return nil, "", ErrInvalidCredentials
 	}
 
@@ -79,7 +78,7 @@ func (s *AuthService) generateJWT(userID uuid.UUID) (string, error) {
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(s.jwtsecret))
+	tokenString, err := token.SignedString([]byte(s.jwtSecret))
 	if err != nil {
 		return "", err
 	}

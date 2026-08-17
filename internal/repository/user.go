@@ -18,7 +18,8 @@ func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
 
 func (r UserRepository) CreateUser(ctx context.Context, user *models.User) error {
 	err := r.pool.QueryRow(ctx, `
-		INSERT INTO users (username, email, password_hash) VALUES ($1, $2,$3) RETURNING id, created_at `,
+		INSERT INTO users (username, email, password_hash) 
+		VALUES ($1, $2,$3) RETURNING id, created_at `,
 		user.Username, user.Email, user.PasswordHash,
 	).Scan(&user.ID, &user.CreatedAt)
 	return err
@@ -31,14 +32,20 @@ func (r UserRepository) GetByEmailOrUsername(ctx context.Context, identifier str
 		SELECT id, created_at, username, email, password_hash, karma
 		FROM users WHERE email = $1 OR username = $1`,
 		identifier,
-	).Scan(&user.ID, &user.CreatedAt, &user.Username, &user.Email, &user.PasswordHash, &user.Karma)
+	).Scan(
+		&user.ID,
+		&user.CreatedAt,
+		&user.Username,
+		&user.Email,
+		&user.PasswordHash,
+		&user.Karma,
+	)
 
 	if err != nil {
 		return nil, fmt.Errorf("get user by email: %w", err)
 	}
 
 	return user, nil
-
 }
 
 func (r UserRepository) GetByID(ctx context.Context, userID uuid.UUID) (*models.User, error) {
@@ -46,13 +53,20 @@ func (r UserRepository) GetByID(ctx context.Context, userID uuid.UUID) (*models.
 
 	err := r.pool.QueryRow(ctx, `
 		SELECT id, created_at, username, email, password_hash, karma
-		FROM users WHERE id = $1`, userID,
-	).Scan(&user.ID, &user.CreatedAt, &user.Username, &user.Email, &user.PasswordHash, &user.Karma)
+		FROM users WHERE id = $1`,
+		userID,
+	).Scan(
+		&user.ID,
+		&user.CreatedAt,
+		&user.Username,
+		&user.Email,
+		&user.PasswordHash,
+		&user.Karma,
+	)
 
 	if err != nil {
 		return nil, fmt.Errorf("get user by id: %w", err)
 	}
 
 	return user, nil
-
 }
