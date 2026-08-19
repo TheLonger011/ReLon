@@ -29,7 +29,7 @@ func (r UserRepository) GetByEmailOrUsername(ctx context.Context, identifier str
 	user := &models.User{}
 
 	err := r.pool.QueryRow(ctx, `
-		SELECT id, created_at, username, email, password_hash, karma
+		SELECT id, created_at, username, email, password_hash, karma,is_verified
 		FROM users WHERE email = $1 OR username = $1`,
 		identifier,
 	).Scan(
@@ -39,6 +39,7 @@ func (r UserRepository) GetByEmailOrUsername(ctx context.Context, identifier str
 		&user.Email,
 		&user.PasswordHash,
 		&user.Karma,
+		&user.IsVerified,
 	)
 
 	if err != nil {
@@ -52,7 +53,7 @@ func (r UserRepository) GetByID(ctx context.Context, userID uuid.UUID) (*models.
 	user := &models.User{}
 
 	err := r.pool.QueryRow(ctx, `
-		SELECT id, created_at, username, email, password_hash, karma
+		SELECT id, created_at, username, email, password_hash, karma,is_verified
 		FROM users WHERE id = $1`,
 		userID,
 	).Scan(
@@ -62,6 +63,7 @@ func (r UserRepository) GetByID(ctx context.Context, userID uuid.UUID) (*models.
 		&user.Email,
 		&user.PasswordHash,
 		&user.Karma,
+		&user.IsVerified,
 	)
 
 	if err != nil {
@@ -69,4 +71,15 @@ func (r UserRepository) GetByID(ctx context.Context, userID uuid.UUID) (*models.
 	}
 
 	return user, nil
+}
+
+func (r UserRepository) MarkVerified(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.pool.Exec(ctx, `
+		UPDATE users SET is_verified = true WHERE id = $1`,
+		userID,
+	)
+	if err != nil {
+		return fmt.Errorf("mark verified user: %w", err)
+	}
+	return nil
 }

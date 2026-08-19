@@ -12,4 +12,5 @@ type User struct {
 	PasswordHash string    `json:"-"`
 	Karma        int       `json:"karma"`
 	CreatedAt    time.Time `json:"created_at"`
+	IsVerified   bool      `json:"is_verified"`
 }

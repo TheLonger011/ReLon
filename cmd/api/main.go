@@ -30,13 +30,25 @@ func main() {
 
 	defer conn.Close()
 
+	redisClient, err := database.ConnectRedis(ctx, cfg.Redis.Addr)
+	if err != nil {
+		log.Fatal("Error connecting to redis: ", err)
+	}
+
+	defer redisClient.Close()
+
 	IPLimiter := middleware.NewIPLimiter()
+
+	from := cfg.Verification.From
+	password := cfg.Verification.Password
 
 	r := chi.NewRouter()
 
 	userRepo := repository.NewUserRepository(conn)
+	emailServ := service.NewEmailService(from, password)
+	verificationServ := service.NewVerificationService(redisClient, emailServ, userRepo)
 	userServ := service.NewAuthService(userRepo, cfg.JWT.Secret)
-	userHand := handler.NewAuthHandler(userServ)
+	userHand := handler.NewAuthHandler(userServ, verificationServ)
 
 	postRepo := repository.NewPostRepository(conn)
 
@@ -69,6 +81,7 @@ func main() {
 	r.Get("/posts/search", postHand.SearchPosts)
 	r.With(middleware.Auth(cfg.JWT.Secret)).Delete("/posts/{id}", postHand.DeletePost)
 	r.With(middleware.Auth(cfg.JWT.Secret)).Put("/posts/{id}", postHand.UpdatePost)
+	r.With(middleware.RateLimit(IPLimiter)).Post("/verify", userHand.Verify)
 
 	r.With(middleware.RateLimit(IPLimiter), middleware.Auth(cfg.JWT.Secret)).Post("/posts", postHand.CreatePost)
 	r.Get("/posts/{id}", postHand.GetByPostID)
