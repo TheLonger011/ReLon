@@ -6,11 +6,13 @@ import (
 	"github.com/TheLonger011/ReLon/internal/middleware"
 	"github.com/TheLonger011/ReLon/internal/models"
 	"github.com/TheLonger011/ReLon/internal/service"
+	"log"
 	"net/http"
 )
 
 type AuthHandler struct {
-	service *service.AuthService
+	service             *service.AuthService
+	verificationService *service.VerificationService
 }
 
 type registerRequest struct {
@@ -23,13 +25,17 @@ type loginRequest struct {
 	Identifier string `json:"identifier"`
 	Password   string `json:"password"`
 }
+type verifyRequest struct {
+	Email string `json:"email"`
+	Code  string `json:"code"`
+}
 type loginResponse struct {
 	User  *models.User `json:"user"`
 	Token string       `json:"token"`
 }
 
-func NewAuthHandler(service *service.AuthService) *AuthHandler {
-	return &AuthHandler{service: service}
+func NewAuthHandler(service *service.AuthService, verificationService *service.VerificationService) *AuthHandler {
+	return &AuthHandler{service: service, verificationService: verificationService}
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
@@ -45,6 +51,10 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	if err := h.verificationService.SendVerificationCode(ctx, user.Email); err != nil {
+		log.Printf("failed to send verification code to %s: %v", user.Email, err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -104,4 +114,21 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func (h *AuthHandler) Verify(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var req verifyRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := h.verificationService.VerifyCode(ctx, req.Email, req.Code); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
