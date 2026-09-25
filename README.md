@@ -1,84 +1,93 @@
-# LongMusic
+# ReLon
 
-Самостоятельно хостящийся музыкальный стриминг-сервис на Go: загрузка треков, прослушивание, плейлисты, избранное и чарты - с собственным веб-плеером.
+Backend API для Reddit-подобной платформы: посты, сообщества, комментарии и голосования. Написан на Go.
 
 ## Возможности
 
-- Регистрация и вход, JWT-аутентификация
-- Загрузка MP3-треков с автоматическим определением названия, исполнителя и длительности из ID3-тегов
-- Стриминг треков и отдача обложки альбома (извлекается из ID3-тега)
-- Поиск треков, список треков по исполнителю, страницы исполнителей
-- Плейлисты: создание, добавление и удаление треков, публикация (публичный/приватный), поиск публичных плейлистов
-- Избранное: добавление и удаление треков
-- История прослушиваний
-- Чарты: топ треков за всё время и топ треков за сегодня
-- Профиль пользователя: публичный профиль, смена имени пользователя и аватара
-- Встроенный веб-плеер (статические HTML/CSS/JS) с поддержкой offline через Service Worker
+- Регистрация и вход с подтверждением email-кодом
+- JWT-аутентификация
+- Посты: создание, получение, поиск, обновление, удаление
+- Голосование за посты (поставить голос / снять голос)
+- Комментарии к постам: создание, получение, обновление, удаление
+- Сообщества: создание, обновление, удаление, список, просмотр по ID
+- Заявки на вступление в сообщество: подача, одобрение, отклонение владельцем
+- Выход участника из сообщества
+- Rate limiting по IP на чувствительных эндпоинтах (регистрация, вход, верификация, создание постов и комментариев)
 
 ## Технологии
 
-- **Go 1.25**
+- **Go 1.26**
 - **go-chi/chi** - HTTP-роутер
-- **PostgreSQL** (sqlx + lib/pq) - хранилище данных
-- **Redis** (go-redis) - кэш
+- **PostgreSQL** (jackc/pgx) - основное хранилище данных
+- **Redis** (go-redis) - хранение кодов email-верификации
 - **golang-jwt/jwt** - JWT-токены
-- **bogem/id3v2**, **dhowden/tag**, **tcolgate/mp3** - чтение ID3-тегов, обложек и подсчёт длительности треков
+- **golang-migrate** - миграции базы данных
+- **net/smtp (Gmail SMTP)** - отправка писем с кодом подтверждения
 - **Docker / Docker Compose** - контейнеризация
-- Статический фронтенд (HTML/CSS/JS) и Service Worker, отдаваемые тем же Go-сервером
 
 ## Основные эндпоинты
 
 | Метод | Путь | Описание | Авторизация |
 | --- | --- | --- | --- |
-| POST | `/api/auth/register` | Регистрация | - |
-| POST | `/api/auth/login` | Вход, получение JWT | - |
-| GET | `/api/me` | Данные текущего пользователя | JWT |
-| GET | `/api/tracks` | Список треков | - |
-| GET | `/api/tracks/search` | Поиск треков | - |
-| GET | `/api/tracks/{id}` | Трек по ID | - |
-| GET | `/api/tracks/{id}/stream` | Стриминг аудио | - |
-| POST | `/api/tracks` | Загрузить трек | JWT |
-| GET | `/api/cover/{id}` | Обложка трека | - |
-| GET | `/api/artists` | Список исполнителей | - |
-| GET | `/api/artists/{id}/tracks` | Треки исполнителя | - |
-| GET | `/api/charts/{id}` | Чарт (например, топ за всё время / за сегодня) | - |
-| GET | `/api/playlists` | Плейлисты пользователя | JWT |
-| POST | `/api/playlists` | Создать плейлист | JWT |
-| GET | `/api/playlists/{id}` | Плейлист по ID | опционально |
-| GET | `/api/playlists/{id}/tracks` | Треки плейлиста | опционально |
-| POST | `/api/playlists/{id}/tracks` | Добавить трек в плейлист | JWT |
-| DELETE | `/api/playlists/{id}/tracks` | Удалить трек из плейлиста | JWT |
-| PATCH | `/api/playlists/{id}/publish` | Сделать плейлист публичным/приватным | JWT |
-| GET | `/api/playlists/public/search` | Поиск публичных плейлистов | - |
-| POST | `/api/favorites` | Добавить в избранное | JWT |
-| DELETE | `/api/favorites/{id}` | Убрать из избранного | JWT |
-| GET | `/api/favorites` | Список избранного | JWT |
-| POST | `/api/plays` | Записать факт прослушивания | JWT |
-| GET | `/api/plays` | История прослушиваний | JWT |
-| GET | `/api/profile` | Профиль текущего пользователя | JWT |
-| GET | `/api/users/{login}/profile` | Публичный профиль пользователя | - |
-| PATCH | `/api/profile/username` | Сменить имя пользователя | JWT |
-| POST | `/api/profile/avatar` | Сменить аватар | JWT |
-| GET | `/ping` | Проверка работоспособности сервиса | - |
+| POST | `/register` | Регистрация пользователя | - |
+| POST | `/login` | Вход, получение JWT | - |
+| POST | `/verify` | Подтверждение email по коду | - |
+| GET | `/me` | Данные текущего пользователя | JWT |
+| GET | `/posts` | Список постов | - |
+| GET | `/posts/search` | Поиск постов | - |
+| GET | `/posts/{id}` | Пост по ID | - |
+| POST | `/posts` | Создать пост | JWT |
+| PUT | `/posts/{id}` | Обновить пост | JWT |
+| DELETE | `/posts/{id}` | Удалить пост | JWT |
+| POST | `/posts/{id}/vote` | Проголосовать за пост | JWT |
+| DELETE | `/posts/{id}/vote` | Снять голос | JWT |
+| GET | `/posts/{id}/comments` | Комментарии к посту | - |
+| POST | `/posts/{id}/comments` | Добавить комментарий | JWT |
+| PUT | `/comments/{id}` | Обновить комментарий | JWT |
+| DELETE | `/comments/{id}` | Удалить комментарий | JWT |
+| GET | `/communities` | Список сообществ | - |
+| GET | `/communities/{id}` | Сообщество по ID | - |
+| POST | `/communities` | Создать сообщество | JWT |
+| PUT | `/communities/{id}` | Обновить сообщество | JWT |
+| DELETE | `/communities/{id}` | Удалить сообщество | JWT |
+| DELETE | `/communities/{id}/leave` | Покинуть сообщество | JWT |
+| POST | `/communities/{id}/join` | Подать заявку на вступление | JWT |
+| GET | `/communities/{id}/requests` | Заявки на вступление | JWT |
+| POST | `/communities/{id}/requests/{requestId}/approve` | Одобрить заявку | JWT |
+| POST | `/communities/{id}/requests/{requestId}/reject` | Отклонить заявку | JWT |
 
 ## Установка и запуск
 
 ### 1. Клонирование репозитория
 
 ```
-git clone https://github.com/TheLonger011/LongMusic.git
-cd LongMusic
+git clone https://github.com/TheLonger011/ReLon.git
+cd ReLon
 ```
 
-### 2. Параметры подключения
+### 2. Настройка переменных окружения
 
-Сейчас строка подключения к PostgreSQL задана прямо в `cmd/api/main.go`:
+Скопируйте `.env.example` в `.env` и заполните значения:
 
 ```
-postgres://postgres:181818@localhost:5432/longmusic?sslmode=disable
+DB_USER=
+DB_PASSWORD=
+DB_NAME=
+DB_HOST=
+DB_PORT=
+
+REDIS_PORT=
+REDIS_ADDR=
+
+SERVER_PORT=
+
+JWT_SECRET=
+
+EMAIL_FROM=
+EMAIL_PASSWORD=
 ```
 
-При локальном запуске без Docker либо поднимите базу с такими же учётными данными, либо поменяйте строку подключения под себя. Для запуска через Docker Compose ничего менять не нужно - сервис `db` уже настроен на эти значения.
+`EMAIL_FROM` и `EMAIL_PASSWORD` - Gmail-адрес и пароль приложения, с которых отправляются коды подтверждения (используется `smtp.gmail.com:587`).
 
 ### 3. Запуск через Docker Compose
 
@@ -86,107 +95,124 @@ postgres://postgres:181818@localhost:5432/longmusic?sslmode=disable
 docker-compose up -d
 ```
 
-Поднимутся приложение (порт `8080`), PostgreSQL и Redis. Загруженные файлы сохраняются в volume `uploads_data`.
+Поднимутся сам сервис, PostgreSQL и Redis. Миграции нужно применить отдельно (см. ниже).
 
 ### 4. Применение миграций
 
-Миграции лежат в `migrations/`. Примените их вручную через [golang-migrate](https://github.com/golang-migrate/migrate) или другой инструмент, например:
+Требуется установленный [golang-migrate](https://github.com/golang-migrate/migrate):
 
 ```
-migrate -path ./migrations -database "postgres://postgres:181818@localhost:5432/longmusic?sslmode=disable" up
+make migrate-up
+```
+
+Другие полезные команды:
+
+```
+make migrate-down     # откатить последнюю миграцию
+make migrate-version   # показать текущую версию
+make migrate-create name=имя_миграции
 ```
 
 ### 5. Запуск локально
 
 ```
-go run ./cmd/api/main.go
+go run cmd/api/main.go
 ```
 
-Приложение стартует на порту `8080` и раздаёт веб-плеер по адресу `http://localhost:8080`.
+Перед локальным запуском убедитесь, что PostgreSQL и Redis доступны по адресам из `.env`, а миграции применены.
 
 ---
 
-# LongMusic (English)
+# ReLon (English)
 
-A self-hosted music streaming service written in Go: track uploads, playback, playlists, favorites, and charts - with a built-in web player.
+Backend API for a Reddit-like platform: posts, communities, comments, and voting. Built with Go.
 
 ## Features
 
-- Registration and login, JWT authentication
-- MP3 track upload with automatic title, artist, and duration detection from ID3 tags
-- Track streaming and album cover retrieval (extracted from the ID3 tag)
-- Track search, per-artist track listings, artist pages
-- Playlists: create, add/remove tracks, publish (public/private), search public playlists
-- Favorites: add and remove tracks
-- Listening history
-- Charts: all-time top tracks and today's top tracks
-- User profile: public profile, username and avatar updates
-- Built-in web player (static HTML/CSS/JS) with offline support via a Service Worker
+- Registration and login with email verification code
+- JWT authentication
+- Posts: create, fetch, search, update, delete
+- Voting on posts (cast vote / remove vote)
+- Comments on posts: create, fetch, update, delete
+- Communities: create, update, delete, list, fetch by ID
+- Community join requests: submit, approve, reject by the owner
+- Leaving a community
+- IP-based rate limiting on sensitive endpoints (register, login, verify, creating posts and comments)
 
 ## Technologies
 
 - **Go 1.25**
 - **go-chi/chi** - HTTP router
-- **PostgreSQL** (sqlx + lib/pq) - data storage
-- **Redis** (go-redis) - caching
+- **PostgreSQL** (jackc/pgx) - primary data store
+- **Redis** (go-redis) - email verification code storage
 - **golang-jwt/jwt** - JWT tokens
-- **bogem/id3v2**, **dhowden/tag**, **tcolgate/mp3** - reading ID3 tags/covers and computing track duration
+- **golang-migrate** - database migrations
+- **net/smtp (Gmail SMTP)** - sending verification emails
 - **Docker / Docker Compose** - containerization
-- A static frontend (HTML/CSS/JS) and Service Worker, served by the same Go server
 
 ## Main Endpoints
 
 | Method | Path | Description | Auth |
 | --- | --- | --- | --- |
-| POST | `/api/auth/register` | Register | - |
-| POST | `/api/auth/login` | Log in, receive a JWT | - |
-| GET | `/api/me` | Current user info | JWT |
-| GET | `/api/tracks` | List tracks | - |
-| GET | `/api/tracks/search` | Search tracks | - |
-| GET | `/api/tracks/{id}` | Get a track by ID | - |
-| GET | `/api/tracks/{id}/stream` | Stream audio | - |
-| POST | `/api/tracks` | Upload a track | JWT |
-| GET | `/api/cover/{id}` | Get a track's cover art | - |
-| GET | `/api/artists` | List artists | - |
-| GET | `/api/artists/{id}/tracks` | Get an artist's tracks | - |
-| GET | `/api/charts/{id}` | Get a chart (e.g. all-time / today's top) | - |
-| GET | `/api/playlists` | Current user's playlists | JWT |
-| POST | `/api/playlists` | Create a playlist | JWT |
-| GET | `/api/playlists/{id}` | Get a playlist by ID | optional |
-| GET | `/api/playlists/{id}/tracks` | Get a playlist's tracks | optional |
-| POST | `/api/playlists/{id}/tracks` | Add a track to a playlist | JWT |
-| DELETE | `/api/playlists/{id}/tracks` | Remove a track from a playlist | JWT |
-| PATCH | `/api/playlists/{id}/publish` | Set a playlist public/private | JWT |
-| GET | `/api/playlists/public/search` | Search public playlists | - |
-| POST | `/api/favorites` | Add to favorites | JWT |
-| DELETE | `/api/favorites/{id}` | Remove from favorites | JWT |
-| GET | `/api/favorites` | List favorites | JWT |
-| POST | `/api/plays` | Record a play | JWT |
-| GET | `/api/plays` | Listening history | JWT |
-| GET | `/api/profile` | Current user's profile | JWT |
-| GET | `/api/users/{login}/profile` | Public user profile | - |
-| PATCH | `/api/profile/username` | Update username | JWT |
-| POST | `/api/profile/avatar` | Update avatar | JWT |
-| GET | `/ping` | Health check | - |
+| POST | `/register` | Register a user | - |
+| POST | `/login` | Log in, receive a JWT | - |
+| POST | `/verify` | Confirm email with a code | - |
+| GET | `/me` | Current user info | JWT |
+| GET | `/posts` | List posts | - |
+| GET | `/posts/search` | Search posts | - |
+| GET | `/posts/{id}` | Get a post by ID | - |
+| POST | `/posts` | Create a post | JWT |
+| PUT | `/posts/{id}` | Update a post | JWT |
+| DELETE | `/posts/{id}` | Delete a post | JWT |
+| POST | `/posts/{id}/vote` | Vote on a post | JWT |
+| DELETE | `/posts/{id}/vote` | Remove a vote | JWT |
+| GET | `/posts/{id}/comments` | Get comments for a post | - |
+| POST | `/posts/{id}/comments` | Add a comment | JWT |
+| PUT | `/comments/{id}` | Update a comment | JWT |
+| DELETE | `/comments/{id}` | Delete a comment | JWT |
+| GET | `/communities` | List communities | - |
+| GET | `/communities/{id}` | Get a community by ID | - |
+| POST | `/communities` | Create a community | JWT |
+| PUT | `/communities/{id}` | Update a community | JWT |
+| DELETE | `/communities/{id}` | Delete a community | JWT |
+| DELETE | `/communities/{id}/leave` | Leave a community | JWT |
+| POST | `/communities/{id}/join` | Submit a join request | JWT |
+| GET | `/communities/{id}/requests` | List pending join requests | JWT |
+| POST | `/communities/{id}/requests/{requestId}/approve` | Approve a join request | JWT |
+| POST | `/communities/{id}/requests/{requestId}/reject` | Reject a join request | JWT |
 
 ## Installation and Running
 
 ### 1. Clone the repository
 
 ```
-git clone https://github.com/TheLonger011/LongMusic.git
-cd LongMusic
+git clone https://github.com/TheLonger011/ReLon.git
+cd ReLon
 ```
 
-### 2. Connection settings
+### 2. Configure environment variables
 
-The PostgreSQL connection string is currently hardcoded in `cmd/api/main.go`:
+Copy `.env.example` to `.env` and fill in the values:
 
 ```
-postgres://postgres:181818@localhost:5432/longmusic?sslmode=disable
+DB_USER=
+DB_PASSWORD=
+DB_NAME=
+DB_HOST=
+DB_PORT=
+
+REDIS_PORT=
+REDIS_ADDR=
+
+SERVER_PORT=
+
+JWT_SECRET=
+
+EMAIL_FROM=
+EMAIL_PASSWORD=
 ```
 
-If running locally without Docker, either spin up a database with matching credentials or edit the connection string. No changes are needed for Docker Compose - the `db` service is already configured to match.
+`EMAIL_FROM` and `EMAIL_PASSWORD` are the Gmail address and app password used to send verification codes (via `smtp.gmail.com:587`).
 
 ### 3. Run with Docker Compose
 
@@ -194,20 +220,28 @@ If running locally without Docker, either spin up a database with matching crede
 docker-compose up -d
 ```
 
-This starts the app (port `8080`), PostgreSQL, and Redis. Uploaded files are stored in the `uploads_data` volume.
+This starts the app, PostgreSQL, and Redis. Migrations still need to be applied separately (see below).
 
 ### 4. Apply migrations
 
-Migrations live in `migrations/`. Apply them manually with [golang-migrate](https://github.com/golang-migrate/migrate) or a similar tool, e.g.:
+Requires [golang-migrate](https://github.com/golang-migrate/migrate) to be installed:
 
 ```
-migrate -path ./migrations -database "postgres://postgres:181818@localhost:5432/longmusic?sslmode=disable" up
+make migrate-up
+```
+
+Other useful commands:
+
+```
+make migrate-down     # roll back the last migration
+make migrate-version   # show the current migration version
+make migrate-create name=migration_name
 ```
 
 ### 5. Run locally
 
 ```
-go run ./cmd/api/main.go
+go run cmd/api/main.go
 ```
 
-The app starts on port `8080` and serves the web player at `http://localhost:8080`.
+Before running locally, make sure PostgreSQL and Redis are reachable at the addresses from `.env` and that migrations have been applied.
